@@ -42,14 +42,12 @@ DriveCopyAppScript/
 ├── PerformanceEngine.gs  # Module tối ưu hóa hiệu năng và API management
 ├── Utilities.gs          # Các utility functions và email notifications
 ├── config.gs            # File cấu hình chính 
-├── .gitignore           # Bảo vệ file config.gs khỏi commit
+├── .gitignore           # 
 └── README.md           # Tài liệu hướng dẫn
 ```
 
 ### Hệ thống cấu hình
-- **config.example.gs**: Template với placeholder values
-- **config.gs**: File cấu hình thực tế (được gitignore để bảo mật)
-- **Tách biệt bảo mật**: Tránh commit thông tin nhạy cảm lên repository
+- **config.gs**: File cấu hình thực tế
 
 ## 🚀 Hướng dẫn cài đặt
 

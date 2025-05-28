@@ -34,8 +34,8 @@ const CONFIG = {
 
   // ==================== CẤU HÌNH EMAIL ====================
 
-  EMAIL_ERROR_SUBJECT: "Có lỗi trong quá trình Copy.",
-  EMAIL_SUCCESS_SUBJECT: "Đã Copy thành công.",
+  EMAIL_ERROR_SUBJECT: "Drive Copy AppScript - Có lỗi trong quá trình Copy.",
+  EMAIL_SUCCESS_SUBJECT: "Drive Copy AppScript - Đã Copy thành công.",
   GITHUB_ISSUE_URL: "https://github.com/ljkenji/DriveCopyAppScript/issues",
   TOOL_NAME: "DriveCopyAppScript",
 

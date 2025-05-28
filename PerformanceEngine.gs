@@ -444,8 +444,7 @@ class PerformanceEngine {
     const totalTime = currentTime - this.startTime;
     const totalMinutes = totalTime / (1000 * 60);
 
-    let report = "📊 PERFORMANCE REPORT v3.0\n";
-    report += "=" * 50 + "\n\n";
+    let report = "📊 PERFORMANCE REPORT \n";
 
     // API Statistics
     report += "🔌 API CALLS:\n";
@@ -467,15 +466,6 @@ class PerformanceEngine {
     report += `- Successful: ${this.operationStats.successfulOperations}\n`;
     report += `- Failed: ${this.operationStats.failedOperations}\n`;
     report += `- Success rate: ${((this.operationStats.successfulOperations / (this.operationStats.successfulOperations + this.operationStats.failedOperations)) * 100).toFixed(2)}%\n\n`;
-
-    // Performance Settings
-    report += "⚙️ SETTINGS:\n";
-    report += `- Turbo Mode: ${this.SPEED_SETTINGS.ENABLE_TURBO_MODE ? 'ON' : 'OFF'}\n`;
-    report += `- Smart Caching: ${this.SPEED_SETTINGS.SMART_CACHING ? 'ON' : 'OFF'}\n`;
-    report += `- Parallel Processing: ${this.SPEED_SETTINGS.PARALLEL_PROCESSING ? 'ON' : 'OFF'}\n`;
-    report += `- Aggressive Batching: ${this.SPEED_SETTINGS.AGGRESSIVE_BATCHING ? 'ON' : 'OFF'}\n\n`;
-
-    report += `⏱️ Total execution time: ${(totalTime / 1000).toFixed(2)} seconds\n`;
 
     return report;
   }

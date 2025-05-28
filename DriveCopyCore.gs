@@ -1163,38 +1163,10 @@ function generateCopyReport(copyResult, sourceFolderId, destFolderId) {
       report += "- Tỷ lệ hoàn thành (metadata): " + metadataCompletionRate + "%\n";
       report += generateProgressBar(metadataCompletionRate) + "\n\n";
     }
-
-    // Thống kê copy (từ copyResult - backward compatibility)
-    report += "📈 THỐNG KÊ COPY (Session hiện tại):\n";
-    report += "- Tổng items: " + copyResult.totalItems + "\n";
-    report += "- Đã copy: " + copyResult.copiedItems + "\n";
-    report += "- Lỗi: " + copyResult.errorItems + "\n";
-    report += "- Bỏ qua: " + copyResult.skippedItems + "\n";
-    report += "- Trạng thái: " + (copyResult.isCompleted ? "✅ Hoàn thành" : "⏳ Đang xử lý") + "\n\n";
-
-    // Tính phần trăm hoàn thành (session hiện tại)
-    const sessionCompletionRate = copyResult.totalItems > 0 ?
-      ((copyResult.copiedItems / copyResult.totalItems) * 100).toFixed(2) : 0;
-
-    report += "📊 TIẾN ĐỘ (Session hiện tại):\n";
-    report += "- Hoàn thành: " + sessionCompletionRate + "%\n";
-    report += generateProgressBar(sessionCompletionRate) + "\n\n";
-
-    // So sánh metadata vs session data (nếu có metadata)
-    if (metadataInfo.hasMetadata) {
-      report += "🔍 SO SÁNH DỮ LIỆU:\n";
-      report += "- Metadata tracking: " + metadataInfo.copiedFiles + "/" + metadataInfo.totalFiles + " files\n";
-      report += "- Session hiện tại: " + copyResult.copiedItems + "/" + copyResult.totalItems + " items\n";
-
-      // Hiển thị link tracking sheet
-      if (metadataInfo.trackingSheetUrl) {
-        report += "- 📋 Tracking Sheet: " + metadataInfo.trackingSheetUrl + "\n";
-      }
-      report += "\n";
+    if (metadataInfo.trackingSheetUrl) {
+      report += "- 📋 Tracking Sheet: " + metadataInfo.trackingSheetUrl + "\n";
     }
-
-    report += "📋 Truy cập Google Sheets để xem chi tiết cấu trúc folder!\n";
-    report += "🔗 Link folder đích: " + destFolder.getUrl() + "\n";
+    report += "\n";
 
     return report;
 
