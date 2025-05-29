@@ -10,7 +10,12 @@
  * 3. Khi copy hoàn thành, trigger tự động bị xóa
  * 4. Có cơ chế timeout để tránh trigger chạy vô hạn (mặc định 6 giờ)
  *
- * CẤU HÌNH:
+ * === CẤU HÌNH FOLDER ===
+ *
+ * - File folder.gs: Chứa SOURCE_URL và DESTINATION_URL
+ * - File config.gs: Chứa các cấu hình khác
+ *
+ * CẤU HÌNH TRIGGER:
  * - AUTO_CREATE_TRIGGER: true/false - Bật/tắt tạo trigger tự động
  * - AUTO_DELETE_TRIGGER: true/false - Bật/tắt xóa trigger khi hoàn thành
  * - AUTO_TRIGGER_INTERVAL_MINUTES: 10 - Khoảng thời gian chạy (phút)
@@ -54,10 +59,16 @@ function validateConfig() {
 
 /**
  * Hàm chính để bắt đầu quá trình copy (tối ưu hóa error handling)
- * Sử dụng cấu hình từ file config.gs
+ * Sử dụng cấu hình từ file config.gs và folder.gs
  */
 function main() {
   try {
+    // Clear cache folder config khi bắt đầu execution mới
+    if (typeof clearFolderConfigCache === 'function') {
+      clearFolderConfigCache();
+      Logger.log("🔄 Đã clear cache folder config cho execution mới");
+    }
+
     // Log system info for debugging
     logSystemInfo();
 
@@ -69,7 +80,7 @@ function main() {
 
     // Validate cấu hình trước khi bắt đầu
     if (!validateConfig()) {
-      Logger.log("❌ Cấu hình không hợp lệ. Vui lòng kiểm tra file config.gs");
+      Logger.log("❌ Cấu hình không hợp lệ. Vui lòng kiểm tra file folder.gs và config.gs");
       return;
     }
 
@@ -82,7 +93,7 @@ function main() {
     const destFolderId = extractFolderIdFromUrl(des);
 
     if (!sourceFolderId || !destFolderId) {
-      throw new Error("URL folder không hợp lệ. Vui lòng kiểm tra SOURCE_FOLDER_URL và DESTINATION_FOLDER_URL trong config.gs");
+      throw new Error("URL folder không hợp lệ. Vui lòng kiểm tra SOURCE_URL và DESTINATION_URL trong file folder.gs");
     }
 
     // Kiểm tra quyền truy cập

@@ -14,7 +14,7 @@ function getTimeNow() {
 }
 
 /**
- * Setup trigger tự động chạy main function mỗi 7 phút
+ * Setup trigger tự động chạy main function mỗi 10 phút
  */
 function setupAutoTrigger() {
   try {
@@ -32,7 +32,7 @@ function setupAutoTrigger() {
     }
 
     // Tạo trigger mới với khoảng thời gian từ config
-    const intervalMinutes = config.AUTO_TRIGGER_INTERVAL_MINUTES || 7;
+    const intervalMinutes = config.AUTO_TRIGGER_INTERVAL_MINUTES || 10;
     const trigger = ScriptApp.newTrigger('main')
       .timeBased()
       .everyMinutes(intervalMinutes)

@@ -8,23 +8,11 @@
  */
 const CONFIG = {
 
-  // ==================== CẤU HÌNH FOLDER ====================
-
-  /**
-   * URL folder nguồn (source) - Folder cần copy
-   */
-  SOURCE_FOLDER_URL: "https://drive.google.com/drive/folders/abc",
-
-  /**
-   * URL folder đích (destination) - Nơi sẽ paste folder
-   */
-  DESTINATION_FOLDER_URL: "https://drive.google.com/drive/folders/def",
-
   // ==================== CẤU HÌNH TRIGGER ====================
 
   TRIGGER_INTERVAL_GMAIL: 10,
   TRIGGER_INTERVAL_OTHER: 30,
-  AUTO_TRIGGER_INTERVAL_MINUTES: 7,    // Khoảng thời gian trigger tự động (phút)
+  AUTO_TRIGGER_INTERVAL_MINUTES: 10,    // Khoảng thời gian trigger tự động (phút)
   AUTO_TRIGGER_MAX_RUNTIME_HOURS: 6,   // Thời gian tối đa trigger hoạt động (giờ)
 
   // ==================== CẤU HÌNH TÊN FILE/FOLDER ====================
@@ -118,10 +106,48 @@ const CONFIG = {
 };
 
 /**
- * Hàm lấy cấu hình
+ * Hàm lấy cấu hình (đã tích hợp caching cho folder URLs)
  */
 function getConfig() {
-  return CONFIG;
+  try {
+    Logger.log("📋 Đang load cấu hình từ config.gs và folder.gs...");
+
+    // Kiểm tra xem file folder.gs có tồn tại không
+    let folderConfig;
+    try {
+      folderConfig = getFolderConfig(); // Sử dụng caching mechanism
+      // Log message sẽ được hiển thị từ getFolderConfig() (cache hit/miss)
+    } catch (error) {
+      Logger.log("❌ Lỗi khi load file folder.gs: " + error.toString());
+      Logger.log("💡 Hướng dẫn: Vui lòng tạo file folder.gs và cấu hình SOURCE_URL, DESTINATION_URL");
+
+      // Clear cache khi có lỗi
+      if (typeof clearFolderConfigCache === 'function') {
+        clearFolderConfigCache();
+      }
+
+      throw new Error("File folder.gs không tồn tại hoặc có lỗi. Vui lòng kiểm tra file folder.gs và cấu hình đúng SOURCE_URL, DESTINATION_URL");
+    }
+
+    // Merge CONFIG với folder URLs
+    const mergedConfig = {
+      ...CONFIG,
+      ...folderConfig
+    };
+
+    Logger.log("🔗 Đã merge cấu hình thành công - CONFIG + folder URLs");
+    return mergedConfig;
+
+  } catch (error) {
+    Logger.log("💥 Lỗi nghiêm trọng khi load cấu hình: " + error.toString());
+
+    // Clear cache khi có lỗi nghiêm trọng
+    if (typeof clearFolderConfigCache === 'function') {
+      clearFolderConfigCache();
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -132,20 +158,48 @@ function getConfigValue(key, defaultValue = null) {
 }
 
 /**
- * Hàm validate cấu hình
+ * Hàm validate cấu hình (đã cập nhật để kiểm tra folder.gs)
  */
 function validateConfig() {
-  const requiredFields = [
-    'SOURCE_FOLDER_URL',
-    'DESTINATION_FOLDER_URL'
-  ];
+  try {
+    Logger.log("🔍 Bắt đầu validate cấu hình...");
 
-  for (let field of requiredFields) {
-    if (!CONFIG[field] || CONFIG[field].includes('YOUR_')) {
-      Logger.log(`Lỗi: Vui lòng cấu hình ${field} trong file config.gs`);
+    // Lấy cấu hình đã merge
+    const config = getConfig();
+
+    // Kiểm tra các trường bắt buộc
+    const requiredFields = [
+      'SOURCE_FOLDER_URL',
+      'DESTINATION_FOLDER_URL'
+    ];
+
+    for (let field of requiredFields) {
+      if (!config[field]) {
+        Logger.log(`❌ Lỗi: Thiếu cấu hình ${field}. Vui lòng kiểm tra file folder.gs`);
+        return false;
+      }
+
+      if (config[field].includes('YOUR_')) {
+        Logger.log(`❌ Lỗi: ${field} chưa được cấu hình. Vui lòng cập nhật URL trong file folder.gs`);
+        Logger.log(`💡 Hướng dẫn: Mở file folder.gs và thay thế URL placeholder bằng URL thực tế`);
+        return false;
+      }
+    }
+
+    // Validate folder access nếu có function validateFolderAccess
+    try {
+      validateFolderAccess();
+      Logger.log("✅ Validation folder access thành công");
+    } catch (error) {
+      Logger.log("❌ Lỗi validation folder access: " + error.toString());
       return false;
     }
-  }
 
-  return true;
+    Logger.log("🎉 Validation cấu hình hoàn thành - Tất cả đều hợp lệ!");
+    return true;
+
+  } catch (error) {
+    Logger.log("💥 Lỗi trong quá trình validate cấu hình: " + error.toString());
+    return false;
+  }
 }
