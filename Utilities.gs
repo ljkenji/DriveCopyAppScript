@@ -14,23 +14,224 @@ function getTimeNow() {
 }
 
 /**
- * Setup trigger tự động - DISABLED for manual execution mode
+ * Setup trigger tự động chạy main function mỗi 7 phút
  */
-function setupTrigger() {
-  Logger.log("⚠️ Tạo trigger tự động đã BỊ TẮT - Chỉ chế độ thực thi thủ công");
-  // Auto trigger creation has been disabled per user preference
-  // Script should be run manually from Google Apps Script interface
+function setupAutoTrigger() {
+  try {
+    const config = getConfig();
+
+    // Kiểm tra xem đã có trigger chưa
+    const existingTriggers = ScriptApp.getProjectTriggers();
+    const mainTriggers = existingTriggers.filter(trigger =>
+      trigger.getHandlerFunction() === 'main'
+    );
+
+    if (mainTriggers.length > 0) {
+      Logger.log("⚠️ Trigger tự động đã tồn tại, bỏ qua việc tạo mới");
+      return mainTriggers[0];
+    }
+
+    // Tạo trigger mới với khoảng thời gian từ config
+    const intervalMinutes = config.AUTO_TRIGGER_INTERVAL_MINUTES || 7;
+    const trigger = ScriptApp.newTrigger('main')
+      .timeBased()
+      .everyMinutes(intervalMinutes)
+      .create();
+
+    // Lưu thời gian tạo trigger để theo dõi timeout
+    const properties = PropertiesService.getScriptProperties();
+    properties.setProperty('TRIGGER_CREATED_TIME', new Date().getTime().toString());
+
+    Logger.log("✅ Đã tạo trigger tự động chạy mỗi " + intervalMinutes + " phút - ID: " + trigger.getUniqueId());
+    Logger.log("🔄 Script sẽ tự động chạy lại sau " + intervalMinutes + " phút nếu chưa hoàn thành");
+    Logger.log("📝 Đã lưu thời gian tạo trigger để theo dõi timeout");
+
+    return trigger;
+
+  } catch (error) {
+    Logger.log("❌ Lỗi khi tạo trigger tự động: " + error.toString());
+    throw error;
+  }
 }
 
 /**
- * Xóa tất cả triggers
+ * Setup trigger tự động - DEPRECATED, sử dụng setupAutoTrigger() thay thế
+ */
+function setupTrigger() {
+  Logger.log("⚠️ setupTrigger() đã deprecated, sử dụng setupAutoTrigger()");
+  return setupAutoTrigger();
+}
+
+/**
+ * Xóa trigger tự động cho main function
+ */
+function deleteAutoTrigger() {
+  try {
+    const triggers = ScriptApp.getProjectTriggers();
+    const mainTriggers = triggers.filter(trigger =>
+      trigger.getHandlerFunction() === 'main'
+    );
+
+    if (mainTriggers.length === 0) {
+      Logger.log("ℹ️ Không tìm thấy trigger tự động nào để xóa");
+      return;
+    }
+
+    let deletedCount = 0;
+    mainTriggers.forEach(trigger => {
+      try {
+        ScriptApp.deleteTrigger(trigger);
+        deletedCount++;
+        Logger.log("🗑️ Đã xóa trigger tự động - ID: " + trigger.getUniqueId());
+      } catch (error) {
+        Logger.log("❌ Lỗi khi xóa trigger " + trigger.getUniqueId() + ": " + error.toString());
+      }
+    });
+
+    // Xóa thời gian tạo trigger đã lưu
+    if (deletedCount > 0) {
+      const properties = PropertiesService.getScriptProperties();
+      properties.deleteProperty('TRIGGER_CREATED_TIME');
+      Logger.log("🧹 Đã xóa thời gian tạo trigger đã lưu");
+    }
+
+    Logger.log("✅ Đã xóa " + deletedCount + " trigger tự động thành công");
+    Logger.log("🛑 Quá trình copy đã hoàn thành, trigger đã được dọn dẹp");
+
+  } catch (error) {
+    Logger.log("❌ Lỗi khi xóa trigger tự động: " + error.toString());
+    throw error;
+  }
+}
+
+/**
+ * Xóa tất cả triggers - DEPRECATED, sử dụng deleteAutoTrigger() thay thế
  */
 function deleteTrigger() {
-  const triggers = ScriptApp.getProjectTriggers();
-  for (let i = 0; i < triggers.length; i++) {
-    ScriptApp.deleteTrigger(triggers[i]);
+  Logger.log("⚠️ deleteTrigger() đã deprecated, sử dụng deleteAutoTrigger()");
+  return deleteAutoTrigger();
+}
+
+/**
+ * Kiểm tra trạng thái trigger tự động
+ * @return {Object} Thông tin về trigger {exists, count, triggerIds}
+ */
+function checkAutoTriggerStatus() {
+  try {
+    const triggers = ScriptApp.getProjectTriggers();
+    const mainTriggers = triggers.filter(trigger =>
+      trigger.getHandlerFunction() === 'main'
+    );
+
+    const triggerIds = mainTriggers.map(trigger => trigger.getUniqueId());
+
+    const status = {
+      exists: mainTriggers.length > 0,
+      count: mainTriggers.length,
+      triggerIds: triggerIds
+    };
+
+    Logger.log("📊 Trạng thái trigger: " + (status.exists ? "Đang hoạt động" : "Không có") +
+      " (" + status.count + " trigger)");
+
+    return status;
+
+  } catch (error) {
+    Logger.log("❌ Lỗi khi kiểm tra trạng thái trigger: " + error.toString());
+    return {
+      exists: false,
+      count: 0,
+      triggerIds: [],
+      error: error.toString()
+    };
   }
-  Logger.log("🗑️ Đã xóa tất cả triggers");
+}
+
+/**
+ * Làm sạch tất cả triggers cũ và tạo trigger mới
+ */
+function resetAutoTrigger() {
+  try {
+    Logger.log("🔄 Bắt đầu reset trigger tự động...");
+
+    // Xóa tất cả triggers cũ
+    deleteAutoTrigger();
+
+    // Đợi một chút để đảm bảo triggers đã được xóa
+    Utilities.sleep(1000);
+
+    // Tạo trigger mới
+    const newTrigger = setupAutoTrigger();
+
+    Logger.log("✅ Đã reset trigger tự động thành công - ID mới: " + newTrigger.getUniqueId());
+
+    return newTrigger;
+
+  } catch (error) {
+    Logger.log("❌ Lỗi khi reset trigger tự động: " + error.toString());
+    throw error;
+  }
+}
+
+/**
+ * Kiểm tra và xóa trigger nếu đã chạy quá lâu (safety mechanism)
+ */
+function checkTriggerTimeout() {
+  try {
+    const config = getConfig();
+    const maxRuntimeHours = config.AUTO_TRIGGER_MAX_RUNTIME_HOURS || 6;
+    const maxRuntimeMs = maxRuntimeHours * 60 * 60 * 1000; // Convert to milliseconds
+
+    const triggers = ScriptApp.getProjectTriggers();
+    const mainTriggers = triggers.filter(trigger =>
+      trigger.getHandlerFunction() === 'main'
+    );
+
+    if (mainTriggers.length === 0) {
+      return false; // Không có trigger nào
+    }
+
+    // Lấy thời gian tạo trigger (ước tính từ thời gian hiện tại)
+    // Note: Google Apps Script không cung cấp thời gian tạo trigger trực tiếp
+    // Chúng ta sẽ sử dụng PropertiesService để lưu thời gian tạo
+    const properties = PropertiesService.getScriptProperties();
+    const triggerCreatedTime = properties.getProperty('TRIGGER_CREATED_TIME');
+
+    if (!triggerCreatedTime) {
+      // Nếu không có thời gian tạo, lưu thời gian hiện tại
+      properties.setProperty('TRIGGER_CREATED_TIME', new Date().getTime().toString());
+      Logger.log("📝 Đã lưu thời gian tạo trigger để theo dõi timeout");
+      return false;
+    }
+
+    const createdTime = parseInt(triggerCreatedTime);
+    const currentTime = new Date().getTime();
+    const runtimeMs = currentTime - createdTime;
+
+    if (runtimeMs > maxRuntimeMs) {
+      Logger.log("⚠️ Trigger đã chạy quá " + maxRuntimeHours + " giờ, tự động xóa để tránh lặp vô hạn");
+      Logger.log("🕐 Thời gian chạy: " + Math.round(runtimeMs / (60 * 60 * 1000)) + " giờ");
+
+      // Xóa trigger và properties
+      deleteAutoTrigger();
+      properties.deleteProperty('TRIGGER_CREATED_TIME');
+
+      // Gửi email thông báo timeout
+      if (config.SEND_ERROR_EMAIL) {
+        sendMail("Trigger tự động đã bị xóa do chạy quá " + maxRuntimeHours + " giờ. Vui lòng kiểm tra và chạy lại script manually.");
+      }
+
+      return true; // Đã xóa trigger do timeout
+    }
+
+    Logger.log("⏰ Trigger đang hoạt động bình thường - Thời gian chạy: " +
+      Math.round(runtimeMs / (60 * 1000)) + " phút");
+    return false;
+
+  } catch (error) {
+    Logger.log("❌ Lỗi khi kiểm tra timeout trigger: " + error.toString());
+    return false;
+  }
 }
 
 /**
@@ -124,6 +325,12 @@ function sendEmailCompleteWithReport(link, report) {
       <div style="background-color: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 5px;">
         <h3>📊 Báo cáo chi tiết:</h3>
         <pre style="background-color: #f8f8f8; padding: 15px; border-radius: 3px; overflow-x: auto; font-size: 12px;">${report}</pre>
+      </div>
+
+      <div style="background-color: #e8f5e8; border: 1px solid #4CAF50; padding: 15px; border-radius: 5px; margin-top: 15px;">
+        <h3>🔄 Thông tin trigger tự động:</h3>
+        <p style="margin: 5px 0;">✅ Trigger tự động đã được xóa thành công sau khi hoàn thành copy</p>
+        <p style="margin: 5px 0;">🛑 Không cần chạy lại script - Quá trình đã hoàn thành</p>
       </div>
 
       <p style="margin-top: 30px; color: #666;">
@@ -320,6 +527,134 @@ function logSystemInfo() {
 
   } catch (error) {
     Logger.log("❌ Lỗi khi log system info: " + error.toString());
+  }
+}
+
+/**
+ * Hiển thị thông tin tổng quan về hệ thống trigger tự động
+ */
+function showTriggerSystemInfo() {
+  try {
+    Logger.log("📋 THÔNG TIN HỆ THỐNG TRIGGER TỰ ĐỘNG");
+    Logger.log("=" * 50);
+
+    const config = getConfig();
+
+    // Thông tin cấu hình
+    Logger.log("⚙️ CẤU HÌNH:");
+    Logger.log("   - Khoảng thời gian chạy: " + (config.AUTO_TRIGGER_INTERVAL_MINUTES || 7) + " phút");
+    Logger.log("   - Thời gian timeout tối đa: " + (config.AUTO_TRIGGER_MAX_RUNTIME_HOURS || 6) + " giờ");
+    Logger.log("   - Tự động tạo trigger: " + (config.AUTO_CREATE_TRIGGER ? "BẬT" : "TẮT"));
+    Logger.log("   - Tự động xóa trigger: " + (config.AUTO_DELETE_TRIGGER ? "BẬT" : "TẮT"));
+
+    // Trạng thái hiện tại
+    Logger.log("\n📊 TRẠNG THÁI HIỆN TẠI:");
+    const status = checkAutoTriggerStatus();
+    Logger.log("   - Có trigger đang hoạt động: " + (status.exists ? "CÓ" : "KHÔNG"));
+    Logger.log("   - Số lượng trigger: " + status.count);
+
+    if (status.exists) {
+      Logger.log("   - IDs trigger: " + JSON.stringify(status.triggerIds));
+
+      // Kiểm tra thời gian chạy
+      const properties = PropertiesService.getScriptProperties();
+      const triggerCreatedTime = properties.getProperty('TRIGGER_CREATED_TIME');
+
+      if (triggerCreatedTime) {
+        const createdTime = parseInt(triggerCreatedTime);
+        const currentTime = new Date().getTime();
+        const runtimeMinutes = Math.round((currentTime - createdTime) / (60 * 1000));
+        Logger.log("   - Thời gian đã chạy: " + runtimeMinutes + " phút");
+
+        const maxRuntimeHours = config.AUTO_TRIGGER_MAX_RUNTIME_HOURS || 6;
+        const maxRuntimeMinutes = maxRuntimeHours * 60;
+        const remainingMinutes = maxRuntimeMinutes - runtimeMinutes;
+
+        if (remainingMinutes > 0) {
+          Logger.log("   - Thời gian còn lại trước timeout: " + remainingMinutes + " phút");
+        } else {
+          Logger.log("   - ⚠️ TRIGGER ĐÃ QUÁ THỜI GIAN CHO PHÉP!");
+        }
+      }
+    }
+
+    Logger.log("\n🔧 CÁC LỆNH QUẢN LÝ:");
+    Logger.log("   - setupAutoTrigger(): Tạo trigger tự động");
+    Logger.log("   - deleteAutoTrigger(): Xóa trigger tự động");
+    Logger.log("   - checkAutoTriggerStatus(): Kiểm tra trạng thái");
+    Logger.log("   - checkTriggerTimeout(): Kiểm tra timeout");
+    Logger.log("   - resetAutoTrigger(): Reset trigger");
+    Logger.log("   - testTriggerSystem(): Test toàn bộ hệ thống");
+
+    Logger.log("\n" + "=" * 50);
+
+    return status;
+
+  } catch (error) {
+    Logger.log("❌ Lỗi khi hiển thị thông tin trigger system: " + error.toString());
+    return null;
+  }
+}
+
+/**
+ * Kiểm tra và test hệ thống trigger tự động
+ */
+function testTriggerSystem() {
+  try {
+    Logger.log("🧪 BẮT ĐẦU TEST HỆ THỐNG TRIGGER TỰ ĐỘNG");
+    Logger.log("=" * 50);
+
+    // 1. Kiểm tra trạng thái hiện tại
+    Logger.log("1️⃣ Kiểm tra trạng thái trigger hiện tại:");
+    const currentStatus = checkAutoTriggerStatus();
+    Logger.log("   - Có trigger: " + currentStatus.exists);
+    Logger.log("   - Số lượng: " + currentStatus.count);
+    Logger.log("   - IDs: " + JSON.stringify(currentStatus.triggerIds));
+
+    // 2. Test tạo trigger
+    Logger.log("\n2️⃣ Test tạo trigger tự động:");
+    const newTrigger = setupAutoTrigger();
+    Logger.log("   - Trigger ID: " + newTrigger.getUniqueId());
+    Logger.log("   - Handler function: " + newTrigger.getHandlerFunction());
+
+    // 3. Kiểm tra lại trạng thái
+    Logger.log("\n3️⃣ Kiểm tra trạng thái sau khi tạo:");
+    const afterCreateStatus = checkAutoTriggerStatus();
+    Logger.log("   - Có trigger: " + afterCreateStatus.exists);
+    Logger.log("   - Số lượng: " + afterCreateStatus.count);
+
+    // 4. Test kiểm tra timeout
+    Logger.log("\n4️⃣ Test kiểm tra timeout:");
+    const timeoutResult = checkTriggerTimeout();
+    Logger.log("   - Trigger bị timeout: " + timeoutResult);
+
+    // 5. Test xóa trigger
+    Logger.log("\n5️⃣ Test xóa trigger:");
+    deleteAutoTrigger();
+
+    // 6. Kiểm tra trạng thái cuối
+    Logger.log("\n6️⃣ Kiểm tra trạng thái sau khi xóa:");
+    const finalStatus = checkAutoTriggerStatus();
+    Logger.log("   - Có trigger: " + finalStatus.exists);
+    Logger.log("   - Số lượng: " + finalStatus.count);
+
+    Logger.log("\n✅ TEST HỆ THỐNG TRIGGER HOÀN THÀNH");
+    Logger.log("=" * 50);
+
+    return {
+      success: true,
+      initialStatus: currentStatus,
+      afterCreateStatus: afterCreateStatus,
+      finalStatus: finalStatus,
+      timeoutResult: timeoutResult
+    };
+
+  } catch (error) {
+    Logger.log("❌ Lỗi trong test trigger system: " + error.toString());
+    return {
+      success: false,
+      error: error.toString()
+    };
   }
 }
 

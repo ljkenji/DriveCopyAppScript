@@ -1,6 +1,30 @@
 /*
  * DriveCopyCore - Core engine tích hợp cho DriveCopyAppScript v1.0
  * Author: Lj Kenji - https://fb.com/lj.kenji
+ *
+ * === HỆ THỐNG TRIGGER TỰ ĐỘNG ===
+ *
+ * CÁCH HOẠT ĐỘNG:
+ * 1. Khi chạy main() lần đầu, tự động tạo trigger chạy mỗi 10 phút
+ * 2. Trigger sẽ tiếp tục chạy main() cho đến khi copy hoàn thành
+ * 3. Khi copy hoàn thành, trigger tự động bị xóa
+ * 4. Có cơ chế timeout để tránh trigger chạy vô hạn (mặc định 6 giờ)
+ *
+ * CẤU HÌNH:
+ * - AUTO_CREATE_TRIGGER: true/false - Bật/tắt tạo trigger tự động
+ * - AUTO_DELETE_TRIGGER: true/false - Bật/tắt xóa trigger khi hoàn thành
+ * - AUTO_TRIGGER_INTERVAL_MINUTES: 10 - Khoảng thời gian chạy (phút)
+ * - AUTO_TRIGGER_MAX_RUNTIME_HOURS: 6 - Thời gian timeout tối đa (giờ)
+ *
+ * CÁC FUNCTION QUẢN LÝ TRIGGER:
+ * - setupAutoTrigger(): Tạo trigger tự động
+ * - deleteAutoTrigger(): Xóa trigger tự động
+ * - checkAutoTriggerStatus(): Kiểm tra trạng thái trigger
+ * - checkTriggerTimeout(): Kiểm tra và xóa trigger nếu timeout
+ * - resetAutoTrigger(): Reset trigger (xóa cũ, tạo mới)
+ * - showTriggerSystemInfo(): Hiển thị thông tin tổng quan
+ * - testTriggerSystem(): Test toàn bộ hệ thống trigger
+ *
  */
 
 /**
@@ -37,6 +61,12 @@ function main() {
     // Log system info for debugging
     logSystemInfo();
 
+    // Kiểm tra timeout trigger trước khi bắt đầu
+    if (checkTriggerTimeout()) {
+      Logger.log("🛑 Trigger đã bị xóa do timeout, dừng thực thi");
+      return;
+    }
+
     // Validate cấu hình trước khi bắt đầu
     if (!validateConfig()) {
       Logger.log("❌ Cấu hình không hợp lệ. Vui lòng kiểm tra file config.gs");
@@ -60,14 +90,24 @@ function main() {
       throw new Error("Không có quyền truy cập một hoặc cả hai folder. Vui lòng kiểm tra quyền truy cập.");
     }
 
+    // Thiết lập trigger tự động nếu được bật trong config
+    if (config.AUTO_CREATE_TRIGGER) {
+      setupAutoTrigger();
+    }
+
     Logger.log("🚀 Bắt đầu copy từ folder: " + sourceFolderId + " đến folder: " + destFolderId);
     start(sourceFolderId, destFolderId);
 
   } catch (error) {
     Logger.log("💥 Lỗi trong main(): " + error.toString());
 
-    // Gửi email thông báo lỗi cấu hình
+    // Xóa trigger nếu có lỗi
     const config = getConfig();
+    if (config && config.AUTO_DELETE_TRIGGER) {
+      deleteAutoTrigger();
+    }
+
+    // Gửi email thông báo lỗi cấu hình
     if (config && config.SEND_ERROR_EMAIL) {
       sendMail("Lỗi cấu hình trong main(): " + error.toString());
     }
@@ -142,7 +182,12 @@ function performCopyWithTracking(sourceFolderId, destFolderId, targetFolder) {
         ", Lỗi: " + copyResult.errorItems +
         ", Bỏ qua: " + copyResult.skippedItems);
 
-      // Gửi email thông báo hoàn thành (manual execution mode)
+      // Xóa trigger tự động khi hoàn thành
+      if (config.AUTO_DELETE_TRIGGER) {
+        deleteAutoTrigger();
+      }
+
+      // Gửi email thông báo hoàn thành
       if (config.SEND_COMPLETION_EMAIL) {
         const folderUrl = targetFolder.getUrl();
         sendEmailCompleteWithReport(folderUrl, report + "\n\n" + perfReport);
@@ -152,11 +197,11 @@ function performCopyWithTracking(sourceFolderId, destFolderId, targetFolder) {
       const performanceEngine = getPerformanceEngine();
       performanceEngine.cleanup();
 
-      Logger.log("✅ Quá trình copy hoàn thành - Chế độ thực thi thủ công");
+      Logger.log("✅ Quá trình copy hoàn thành - Trigger đã được xóa tự động");
     } else {
       Logger.log("⏳ Copy chưa hoàn thành. Tiến độ: " +
         copyResult.copiedItems + "/" + copyResult.totalItems + " item");
-      Logger.log("🔄 Chạy lại script manually để tiếp tục");
+      Logger.log("🔄 Trigger sẽ tiếp tục chạy sau " + config.AUTO_TRIGGER_INTERVAL_MINUTES + " phút để hoàn thành");
     }
 
   } catch (error) {

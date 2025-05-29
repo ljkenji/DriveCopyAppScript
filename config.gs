@@ -24,6 +24,8 @@ const CONFIG = {
 
   TRIGGER_INTERVAL_GMAIL: 10,
   TRIGGER_INTERVAL_OTHER: 30,
+  AUTO_TRIGGER_INTERVAL_MINUTES: 7,    // Khoảng thời gian trigger tự động (phút)
+  AUTO_TRIGGER_MAX_RUNTIME_HOURS: 6,   // Thời gian tối đa trigger hoạt động (giờ)
 
   // ==================== CẤU HÌNH TÊN FILE/FOLDER ====================
 
