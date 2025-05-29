@@ -17,7 +17,7 @@ function getTimeNow() {
  * Setup trigger tự động - DISABLED for manual execution mode
  */
 function setupTrigger() {
-  Logger.log("⚠️ Auto trigger creation is DISABLED - Manual execution mode only");
+  Logger.log("⚠️ Tạo trigger tự động đã BỊ TẮT - Chỉ chế độ thực thi thủ công");
   // Auto trigger creation has been disabled per user preference
   // Script should be run manually from Google Apps Script interface
 }
@@ -308,15 +308,15 @@ function createConfigBackup() {
  */
 function logSystemInfo() {
   try {
-    Logger.log("🔍 SYSTEM INFO:");
-    Logger.log("- Script ID: " + ScriptApp.getScriptId());
-    Logger.log("- User: " + Session.getActiveUser().getEmail());
-    Logger.log("- Timezone: " + Session.getScriptTimeZone());
+    Logger.log("🔍 THÔNG TIN HỆ THỐNG:");
+    Logger.log("- ID Script: " + ScriptApp.getScriptId());
+    Logger.log("- Người dùng: " + Session.getActiveUser().getEmail());
+    Logger.log("- Múi giờ: " + Session.getScriptTimeZone());
     Logger.log("- Triggers: " + ScriptApp.getProjectTriggers().length);
 
     const config = getConfig();
-    Logger.log("- Performance Mode: " + (config.PERFORMANCE_MODE || 'DEFAULT'));
-    Logger.log("- Max Files Per Run: " + config.MAX_FILES_PER_RUN);
+    Logger.log("- Chế độ hiệu suất: " + (config.PERFORMANCE_MODE || 'MẶC ĐỊNH'));
+    Logger.log("- Số file tối đa mỗi lần chạy: " + config.MAX_FILES_PER_RUN);
 
   } catch (error) {
     Logger.log("❌ Lỗi khi log system info: " + error.toString());
@@ -341,7 +341,7 @@ function retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
 
       if (attempt < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, attempt);
-        Logger.log(`⚠️ Retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
+        Logger.log(`⚠️ Thử lại ${attempt + 1}/${maxRetries} sau ${delay}ms`);
         Utilities.sleep(delay);
       }
     }

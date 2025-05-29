@@ -127,7 +127,7 @@ function performCopyWithTracking(sourceFolderId, destFolderId, targetFolder) {
   const performanceEngine = getPerformanceEngine();
 
   try {
-    Logger.log("🚀 Bắt đầu copy với tracking system tích hợp v3.0");
+    Logger.log("🚀 Bắt đầu copy với tracking system tích hợp v1.0");
 
     // Thực hiện copy với recursive engine
     const copyResult = copyFolderStructureWithTracking(sourceFolderId, destFolderId);
@@ -152,7 +152,7 @@ function performCopyWithTracking(sourceFolderId, destFolderId, targetFolder) {
       const performanceEngine = getPerformanceEngine();
       performanceEngine.cleanup();
 
-      Logger.log("✅ Copy process hoàn thành - Manual execution mode");
+      Logger.log("✅ Quá trình copy hoàn thành - Chế độ thực thi thủ công");
     } else {
       Logger.log("⏳ Copy chưa hoàn thành. Tiến độ: " +
         copyResult.copiedItems + "/" + copyResult.totalItems + " item");
@@ -171,7 +171,7 @@ function performCopyWithTracking(sourceFolderId, destFolderId, targetFolder) {
 }
 
 /**
- * Copy toàn bộ cấu trúc folder với tracking đầy đủ (SPEED OPTIMIZED v3.0)
+ * Copy toàn bộ cấu trúc folder với tracking đầy đủ (SPEED OPTIMIZED v1.0)
  * @param {string} sourceFolderId - ID folder nguồn
  * @param {string} destFolderId - ID folder đích
  * @return {Object} Kết quả copy {totalItems, copiedItems, errorItems, skippedItems, isCompleted}
@@ -182,7 +182,7 @@ function copyFolderStructureWithTracking(sourceFolderId, destFolderId) {
   const startTime = new Date();
 
   try {
-    Logger.log("🚀 Starting SPEED OPTIMIZED copy process v3.0");
+    Logger.log("🚀 Bắt đầu quá trình copy TỐI ƯU TỐC ĐỘ v1.0");
 
     // Lấy hoặc tạo tracking sheet
     const trackingResult = getOrCreateTrackingSheet(sourceFolderId, destFolderId);
@@ -425,7 +425,7 @@ function addMetadataToSheet(sheet) {
       ["Tạo bởi:", "DriveCopyAppScript v1.0 ", "Tổng số file:", 0],
       ["Thời gian tạo:", new Date(), "Số lần chạy:", 0],
       ["Người tạo:", Session.getActiveUser().getEmail(), "File đã copy:", 0],
-      ["Script version:", "v3.0", "", ""]
+      ["Script version:", "v1.0", "", ""]
     ];
 
     // Batch insert metadata at rows 1-5 (4 columns: A, B, C, D)
@@ -547,7 +547,7 @@ function speedOptimizedScanAndUpdate(sourceFolderId, sheet, performanceEngine) {
     for (let i = 0; i < newItemsFormatting.length; i += formatChunkSize) {
       const chunk = newItemsFormatting.slice(i, i + formatChunkSize);
 
-      Logger.log(`🔄 Processing format chunk ${Math.floor(i / formatChunkSize) + 1}/${Math.ceil(newItemsFormatting.length / formatChunkSize)} (${chunk.length} operations)`);
+      Logger.log(`🔄 Đang xử lý chunk định dạng ${Math.floor(i / formatChunkSize) + 1}/${Math.ceil(newItemsFormatting.length / formatChunkSize)} (${chunk.length} thao tác)`);
 
       chunk.forEach(format => {
         performanceEngine.addSheetFormatUpdate(
@@ -562,7 +562,7 @@ function speedOptimizedScanAndUpdate(sourceFolderId, sheet, performanceEngine) {
 
       // Kiểm tra timeout risk sau mỗi chunk
       if (performanceEngine.checkTimeoutRisk()) {
-        Logger.log(`⚠️ Timeout risk detected, stopping format processing at chunk ${Math.floor(i / formatChunkSize) + 1}`);
+        Logger.log(`⚠️ Phát hiện nguy cơ timeout, dừng xử lý định dạng tại chunk ${Math.floor(i / formatChunkSize) + 1}`);
         break;
       }
     }
@@ -1150,7 +1150,7 @@ function getErrorItemsCount(sheet) {
  */
 function generateCopyReport(copyResult, sourceFolderId, destFolderId) {
   try {
-    let report = "📊 BÁO CÁO COPY CHI TIẾT v3.0\n";
+    let report = "📊 BÁO CÁO COPY CHI TIẾT v1.0\n";
     report += "=" * 50 + "\n\n";
 
     // Thông tin folder

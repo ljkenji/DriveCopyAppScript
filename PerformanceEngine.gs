@@ -89,7 +89,7 @@ class PerformanceEngine {
       lastFlushTime: new Date()
     };
 
-    Logger.log("🚀 PerformanceEngine v3.0 initialized - Unified performance system enabled");
+    Logger.log("🚀 PerformanceEngine v1.0 đã khởi tạo - Hệ thống hiệu suất thống nhất đã được kích hoạt");
   }
 
   /**
@@ -121,7 +121,7 @@ class PerformanceEngine {
       }
     }
 
-    throw new Error(`API call failed after ${maxRetries} attempts: ${lastError.toString()}`);
+    throw new Error(`Lời gọi API thất bại sau ${maxRetries} lần thử: ${lastError.toString()}`);
   }
 
   /**
@@ -232,7 +232,7 @@ class PerformanceEngine {
 
     if (allOperations.length === 0) return;
 
-    Logger.log(`🚀 Flushing ${allOperations.length} sheet value updates (${this.priorityQueue.filter(op => op.type === 'values').length} priority + ${this.sheetsValueQueue.length} regular)...`);
+    Logger.log(`🚀 Đang xử lý ${allOperations.length} cập nhật giá trị sheet (${this.priorityQueue.filter(op => op.type === 'values').length} ưu tiên + ${this.sheetsValueQueue.length} thông thường)...`);
 
     // Group by sheet for batch processing
     const sheetGroups = new Map();
@@ -259,7 +259,7 @@ class PerformanceEngine {
 
         this.operationStats.successfulOperations += operations.length;
       } catch (error) {
-        Logger.log(`❌ Error flushing sheet values: ${error.toString()}`);
+        Logger.log(`❌ Lỗi khi xử lý giá trị sheet: ${error.toString()}`);
         this.operationStats.failedOperations += operations.length;
       }
     });
@@ -279,14 +279,14 @@ class PerformanceEngine {
 
     if (allFormatOperations.length === 0) return;
 
-    Logger.log(`🎨 Flushing ${allFormatOperations.length} sheet format updates (${this.priorityQueue.filter(op => op.type === 'format').length} priority + ${this.sheetsFormatQueue.length} regular)...`);
+    Logger.log(`🎨 Đang xử lý ${allFormatOperations.length} cập nhật định dạng sheet (${this.priorityQueue.filter(op => op.type === 'format').length} ưu tiên + ${this.sheetsFormatQueue.length} thông thường)...`);
 
     // Xử lý theo chunks để tránh timeout
     const chunkSize = this.BATCH_LIMITS.FORMAT_CHUNK_SIZE;
     for (let i = 0; i < allFormatOperations.length; i += chunkSize) {
       const chunk = allFormatOperations.slice(i, i + chunkSize);
 
-      Logger.log(`🔄 Processing format chunk ${Math.floor(i / chunkSize) + 1}/${Math.ceil(allFormatOperations.length / chunkSize)} (${chunk.length} operations)`);
+      Logger.log(`🔄 Đang xử lý chunk định dạng ${Math.floor(i / chunkSize) + 1}/${Math.ceil(allFormatOperations.length / chunkSize)} (${chunk.length} thao tác)`);
 
       chunk.forEach(operation => {
         try {
@@ -302,14 +302,14 @@ class PerformanceEngine {
 
           this.operationStats.successfulOperations++;
         } catch (error) {
-          Logger.log(`❌ Error flushing sheet format: ${error.toString()}`);
+          Logger.log(`❌ Lỗi khi xử lý định dạng sheet: ${error.toString()}`);
           this.operationStats.failedOperations++;
         }
       });
 
       // Kiểm tra timeout risk sau mỗi chunk
       if (this.checkTimeoutRisk()) {
-        Logger.log(`⚠️ Timeout risk detected, stopping format flush at chunk ${Math.floor(i / chunkSize) + 1}`);
+        Logger.log(`⚠️ Phát hiện nguy cơ timeout, dừng xử lý định dạng tại chunk ${Math.floor(i / chunkSize) + 1}`);
         break;
       }
 
@@ -338,7 +338,7 @@ class PerformanceEngine {
       if (this.SPEED_SETTINGS.SMART_CACHING && this.cache.folderStructure.has(cacheKey)) {
         const cached = this.cache.folderStructure.get(cacheKey);
         if (this.isCacheValid(cached.timestamp)) {
-          Logger.log(`⚡ Cache hit for folder scan: ${currentPath || 'root'}`);
+          Logger.log(`⚡ Tìm thấy cache cho scan folder: ${currentPath || 'gốc'}`);
           this.speedMetrics.cacheHitRate++;
           return cached.data;
         }
@@ -374,7 +374,7 @@ class PerformanceEngine {
       return results;
 
     } catch (error) {
-      Logger.log(`❌ Error in speed optimized scan: ${error.toString()}`);
+      Logger.log(`❌ Lỗi trong quá trình scan tối ưu tốc độ: ${error.toString()}`);
       throw error;
     }
   }
@@ -470,7 +470,7 @@ class PerformanceEngine {
 
     // Log performance every 100 operations
     if (this.speedMetrics.totalOperations % 100 === 0) {
-      Logger.log(`⚡ Speed: ${this.speedMetrics.operationsPerSecond} ops/sec, Total: ${this.speedMetrics.totalOperations}`);
+      Logger.log(`⚡ Tốc độ: ${this.speedMetrics.operationsPerSecond} thao tác/giây, Tổng: ${this.speedMetrics.totalOperations}`);
     }
   }
 
@@ -488,7 +488,7 @@ class PerformanceEngine {
 
     if (executionTime > warningThreshold) {
       const remainingTime = timeLimit - executionTime;
-      Logger.log(`⚠️ Timeout warning: ${Math.round(executionTime / 1000)}s elapsed, ${Math.round(remainingTime / 1000)}s remaining`);
+      Logger.log(`⚠️ Cảnh báo timeout: đã trôi qua ${Math.round(executionTime / 1000)}s, còn lại ${Math.round(remainingTime / 1000)}s`);
 
       // Trả về true nếu còn ít hơn 30 giây
       return remainingTime < 30000;
@@ -501,22 +501,22 @@ class PerformanceEngine {
    * Flush all pending operations với timeout protection
    */
   flushAll() {
-    Logger.log("🚀 Flushing all pending operations...");
+    Logger.log("🚀 Đang xử lý tất cả thao tác đang chờ...");
 
     // Kiểm tra timeout risk trước khi flush
     if (this.checkTimeoutRisk()) {
-      Logger.log("⚠️ Timeout risk detected, performing emergency flush...");
+      Logger.log("⚠️ Phát hiện nguy cơ timeout, thực hiện xử lý khẩn cấp...");
       // Chỉ flush priority operations
       const priorityValues = this.priorityQueue.filter(op => op.type === 'values');
       const priorityFormats = this.priorityQueue.filter(op => op.type === 'format');
 
       if (priorityValues.length > 0) {
-        Logger.log(`🚨 Emergency flushing ${priorityValues.length} priority value operations`);
+        Logger.log(`🚨 Xử lý khẩn cấp ${priorityValues.length} thao tác giá trị ưu tiên`);
         this.flushSheetValueUpdates();
       }
 
       if (priorityFormats.length > 0 && priorityFormats.length <= 50) {
-        Logger.log(`🚨 Emergency flushing ${priorityFormats.length} priority format operations`);
+        Logger.log(`🚨 Xử lý khẩn cấp ${priorityFormats.length} thao tác định dạng ưu tiên`);
         this.flushSheetFormatUpdates();
       }
 
@@ -526,7 +526,7 @@ class PerformanceEngine {
     this.flushSheetValueUpdates();
     this.flushSheetFormatUpdates();
 
-    Logger.log("✅ All operations flushed");
+    Logger.log("✅ Đã xử lý xong tất cả thao tác");
   }
 
   /**
@@ -537,28 +537,28 @@ class PerformanceEngine {
     const totalTime = currentTime - this.startTime;
     const totalMinutes = totalTime / (1000 * 60);
 
-    let report = "📊 PERFORMANCE REPORT \n";
+    let report = "📊 BÁO CÁO HIỆU SUẤT \n";
 
     // API Statistics
-    report += "🔌 API CALLS:\n";
-    report += `- Total: ${this.apiCallCount}\n`;
-    report += `- Drive Read: ${this.apiCounters.driveRead}\n`;
-    report += `- Drive Write: ${this.apiCounters.driveWrite}\n`;
-    report += `- Sheets Read: ${this.apiCounters.sheetsRead}\n`;
-    report += `- Sheets Write: ${this.apiCounters.sheetsWrite}\n`;
-    report += `- Rate: ${(this.apiCallCount / totalMinutes).toFixed(2)} calls/min\n\n`;
+    report += "🔌 THỐNG KÊ API:\n";
+    report += `- Tổng: ${this.apiCallCount}\n`;
+    report += `- Drive Đọc: ${this.apiCounters.driveRead}\n`;
+    report += `- Drive Ghi: ${this.apiCounters.driveWrite}\n`;
+    report += `- Sheets Đọc: ${this.apiCounters.sheetsRead}\n`;
+    report += `- Sheets Ghi: ${this.apiCounters.sheetsWrite}\n`;
+    report += `- Tốc độ: ${(this.apiCallCount / totalMinutes).toFixed(2)} lời gọi/phút\n\n`;
 
     // Speed Metrics
-    report += "⚡ SPEED METRICS:\n";
-    report += `- Operations/sec: ${this.speedMetrics.operationsPerSecond}\n`;
-    report += `- Total operations: ${this.speedMetrics.totalOperations}\n`;
-    report += `- Cache hit rate: ${this.speedMetrics.cacheHitRate}\n\n`;
+    report += "⚡ THỐNG KÊ TỐC ĐỘ:\n";
+    report += `- Thao tác/giây: ${this.speedMetrics.operationsPerSecond}\n`;
+    report += `- Tổng thao tác: ${this.speedMetrics.totalOperations}\n`;
+    report += `- Tỷ lệ cache hit: ${this.speedMetrics.cacheHitRate}\n\n`;
 
     // Batch Statistics
-    report += "📦 BATCH OPERATIONS:\n";
-    report += `- Successful: ${this.operationStats.successfulOperations}\n`;
-    report += `- Failed: ${this.operationStats.failedOperations}\n`;
-    report += `- Success rate: ${((this.operationStats.successfulOperations / (this.operationStats.successfulOperations + this.operationStats.failedOperations)) * 100).toFixed(2)}%\n\n`;
+    report += "📦 THAO TÁC BATCH:\n";
+    report += `- Thành công: ${this.operationStats.successfulOperations}\n`;
+    report += `- Thất bại: ${this.operationStats.failedOperations}\n`;
+    report += `- Tỷ lệ thành công: ${((this.operationStats.successfulOperations / (this.operationStats.successfulOperations + this.operationStats.failedOperations)) * 100).toFixed(2)}%\n\n`;
 
     return report;
   }
@@ -621,7 +621,7 @@ class PerformanceEngine {
     this.cache.fileMetadata.clear();
     this.cache.duplicateChecks.clear();
 
-    Logger.log("🧹 PerformanceEngine cleanup completed");
+    Logger.log("🧹 PerformanceEngine đã hoàn thành dọn dẹp");
   }
 }
 
