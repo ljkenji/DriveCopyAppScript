@@ -539,19 +539,35 @@ function speedOptimizedScanAndUpdate(sourceFolderId, sheet, performanceEngine) {
       true // High priority
     );
 
-    // Batch format trạng thái
-    newItemsFormatting.forEach(format => {
-      performanceEngine.addSheetFormatUpdate(
-        sheet,
-        `F${format.row}`,
-        {
-          backgroundColor: format.backgroundColor,
-          fontColor: format.fontColor
-        }
-      );
-    });
+    // Batch format trạng thái với chunking để tránh timeout
+    Logger.log(`🎨 Preparing ${newItemsFormatting.length} format operations...`);
 
-    // Flush updates
+    // Xử lý format theo chunks để tránh timeout
+    const formatChunkSize = performanceEngine.BATCH_LIMITS.FORMAT_CHUNK_SIZE || 100;
+    for (let i = 0; i < newItemsFormatting.length; i += formatChunkSize) {
+      const chunk = newItemsFormatting.slice(i, i + formatChunkSize);
+
+      Logger.log(`🔄 Processing format chunk ${Math.floor(i / formatChunkSize) + 1}/${Math.ceil(newItemsFormatting.length / formatChunkSize)} (${chunk.length} operations)`);
+
+      chunk.forEach(format => {
+        performanceEngine.addSheetFormatUpdate(
+          sheet,
+          `F${format.row}`,
+          {
+            backgroundColor: format.backgroundColor,
+            fontColor: format.fontColor
+          }
+        );
+      });
+
+      // Kiểm tra timeout risk sau mỗi chunk
+      if (performanceEngine.checkTimeoutRisk()) {
+        Logger.log(`⚠️ Timeout risk detected, stopping format processing at chunk ${Math.floor(i / formatChunkSize) + 1}`);
+        break;
+      }
+    }
+
+    // Flush updates với timeout protection
     performanceEngine.flushAll();
 
     Logger.log("✅ Đã batch insert " + newItemsData.length + " item mới (SPEED OPTIMIZED)");

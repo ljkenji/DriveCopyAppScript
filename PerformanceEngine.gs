@@ -32,13 +32,16 @@ class PerformanceEngine {
       ADAPTIVE_DELAY: this.config.ENABLE_ADAPTIVE_DELAY !== false
     };
 
-    // Batch Operations
+    // Batch Operations - Tối ưu hóa để tránh timeout
     this.BATCH_LIMITS = {
-      SHEETS_VALUES: this.config.BATCH_SIZE_SHEETS || 2000,
-      SHEETS_FORMATS: this.config.BATCH_SIZE_FORMATS || 1000,
-      DRIVE_OPERATIONS: this.config.BATCH_SIZE_DRIVE || 200,
-      MEMORY_THRESHOLD: this.config.MEMORY_CLEANUP_THRESHOLD || 8000,
-      PARALLEL_CHUNKS: this.config.PARALLEL_CHUNKS || 4
+      SHEETS_VALUES: this.config.BATCH_SIZE_SHEETS || 300,
+      SHEETS_FORMATS: this.config.BATCH_SIZE_FORMATS || 200,
+      DRIVE_OPERATIONS: this.config.BATCH_SIZE_DRIVE || 100,
+      MEMORY_THRESHOLD: this.config.MEMORY_CLEANUP_THRESHOLD || 5000,
+      PARALLEL_CHUNKS: this.config.PARALLEL_CHUNKS || 4,
+      SCAN_CHUNK_SIZE: this.config.SCAN_CHUNK_SIZE || 500,
+      FORMAT_CHUNK_SIZE: this.config.FORMAT_CHUNK_SIZE || 100,
+      PROGRESSIVE_FLUSH_THRESHOLD: this.config.PROGRESSIVE_FLUSH_THRESHOLD || 150
     };
 
     // Batch queues
@@ -46,6 +49,11 @@ class PerformanceEngine {
     this.sheetsFormatQueue = [];
     this.driveOperationQueue = [];
     this.priorityQueue = [];
+
+    // Execution tracking để tránh timeout
+    this.executionStartTime = new Date();
+    this.operationCount = 0;
+    this.lastProgressSave = new Date();
 
     // Speed Optimization
     this.SPEED_SETTINGS = {
@@ -168,10 +176,10 @@ class PerformanceEngine {
 
     if (priority) {
       this.priorityQueue.push(operation);
-      Logger.log(`🔍 DEBUG: Added to PRIORITY queue - range: ${range}, values count: ${values.length}, total priority queue: ${this.priorityQueue.length}`);
+      Logger.log(`🔍 DEBUG: Đã thêm vào hàng đợi ƯU TIÊN - phạm vi: ${range}, số lượng giá trị: ${values.length}, tổng số trong hàng đợi ưu tiên: ${this.priorityQueue.length}`);
     } else {
       this.sheetsValueQueue.push(operation);
-      Logger.log(`🔍 DEBUG: Added to REGULAR queue - range: ${range}, values count: ${values.length}, total regular queue: ${this.sheetsValueQueue.length}`);
+      Logger.log(`🔍 DEBUG: Đã thêm vào hàng đợi THÔNG THƯỜNG - phạm vi: ${range}, số lượng giá trị: ${values.length}, tổng số trong hàng đợi thông thường: ${this.sheetsValueQueue.length}`);
     }
 
     // Auto-flush if queue is full
@@ -181,7 +189,7 @@ class PerformanceEngine {
   }
 
   /**
-   * Add sheet format update to batch queue
+   * Add sheet format update to batch queue với progressive flushing
    */
   addSheetFormatUpdate(sheet, range, format, priority = false) {
     const operation = {
@@ -198,10 +206,21 @@ class PerformanceEngine {
       this.sheetsFormatQueue.push(operation);
     }
 
+    this.operationCount++;
+
+    // Progressive flushing để tránh timeout
+    if (this.sheetsFormatQueue.length >= this.BATCH_LIMITS.PROGRESSIVE_FLUSH_THRESHOLD) {
+      Logger.log(`🔄 Progressive flush: ${this.sheetsFormatQueue.length} format operations`);
+      this.flushSheetFormatUpdates();
+    }
+
     // Auto-flush if queue is full
     if (this.sheetsFormatQueue.length >= this.BATCH_LIMITS.SHEETS_FORMATS) {
       this.flushSheetFormatUpdates();
     }
+
+    // Kiểm tra timeout risk
+    this.checkTimeoutRisk();
   }
 
   /**
@@ -252,7 +271,7 @@ class PerformanceEngine {
   }
 
   /**
-   * Flush sheet format updates
+   * Flush sheet format updates với chunking để tránh timeout
    */
   flushSheetFormatUpdates() {
     // Combine both regular queue and priority queue
@@ -262,28 +281,48 @@ class PerformanceEngine {
 
     Logger.log(`🎨 Flushing ${allFormatOperations.length} sheet format updates (${this.priorityQueue.filter(op => op.type === 'format').length} priority + ${this.sheetsFormatQueue.length} regular)...`);
 
-    allFormatOperations.forEach(operation => {
-      try {
-        const range = operation.sheet.getRange(operation.range);
-        const format = operation.format;
+    // Xử lý theo chunks để tránh timeout
+    const chunkSize = this.BATCH_LIMITS.FORMAT_CHUNK_SIZE;
+    for (let i = 0; i < allFormatOperations.length; i += chunkSize) {
+      const chunk = allFormatOperations.slice(i, i + chunkSize);
 
-        this.executeWithBackoff(() => {
-          if (format.backgroundColor) range.setBackground(format.backgroundColor);
-          if (format.fontColor) range.setFontColor(format.fontColor);
-          if (format.fontWeight) range.setFontWeight(format.fontWeight);
-          if (format.fontSize) range.setFontSize(format.fontSize);
-        }, [], 'sheetsWrite', 2);
+      Logger.log(`🔄 Processing format chunk ${Math.floor(i / chunkSize) + 1}/${Math.ceil(allFormatOperations.length / chunkSize)} (${chunk.length} operations)`);
 
-        this.operationStats.successfulOperations++;
-      } catch (error) {
-        Logger.log(`❌ Error flushing sheet format: ${error.toString()}`);
-        this.operationStats.failedOperations++;
+      chunk.forEach(operation => {
+        try {
+          const range = operation.sheet.getRange(operation.range);
+          const format = operation.format;
+
+          this.executeWithBackoff(() => {
+            if (format.backgroundColor) range.setBackground(format.backgroundColor);
+            if (format.fontColor) range.setFontColor(format.fontColor);
+            if (format.fontWeight) range.setFontWeight(format.fontWeight);
+            if (format.fontSize) range.setFontSize(format.fontSize);
+          }, [], 'sheetsWrite', 2);
+
+          this.operationStats.successfulOperations++;
+        } catch (error) {
+          Logger.log(`❌ Error flushing sheet format: ${error.toString()}`);
+          this.operationStats.failedOperations++;
+        }
+      });
+
+      // Kiểm tra timeout risk sau mỗi chunk
+      if (this.checkTimeoutRisk()) {
+        Logger.log(`⚠️ Timeout risk detected, stopping format flush at chunk ${Math.floor(i / chunkSize) + 1}`);
+        break;
       }
-    });
+
+      // Thêm delay nhỏ giữa các chunks
+      if (i + chunkSize < allFormatOperations.length) {
+        Utilities.sleep(50); // 50ms delay
+      }
+    }
 
     // Clear both queues
     this.sheetsFormatQueue = [];
     this.priorityQueue = this.priorityQueue.filter(op => op.type !== 'format'); // Keep non-format operations
+    this.operationStats.lastFlushTime = new Date();
   }
 
   /**
@@ -291,6 +330,7 @@ class PerformanceEngine {
    */
   speedOptimizedFolderScan(folder, currentPath = "", options = {}) {
     const startTime = new Date();
+    const results = [];
 
     try {
       // Check cache first
@@ -304,10 +344,20 @@ class PerformanceEngine {
         }
       }
 
-      // Perform optimized scan
-      const results = this.SPEED_SETTINGS.PARALLEL_PROCESSING ?
-        this.parallelFolderScan(folder, currentPath, options) :
-        this.standardFolderScan(folder, currentPath, options);
+      // Perform optimized scan with pagination
+      const fileIterator = folder.getFiles();
+      let fileCount = 0;
+      while (fileIterator.hasNext() && fileCount < this.config.FOLDER_SCAN_PAGE_SIZE) {
+        const file = fileIterator.next();
+        results.push({
+          id: file.getId(),
+          name: file.getName(),
+          type: 'File',
+          path: currentPath ? `${currentPath}/${file.getName()}` : file.getName(),
+          size: file.getSize()
+        });
+        fileCount++;
+      }
 
       // Cache results
       if (this.SPEED_SETTINGS.SMART_CACHING) {
@@ -425,10 +475,53 @@ class PerformanceEngine {
   }
 
   /**
-   * Flush all pending operations
+   * Kiểm tra nguy cơ timeout
+   * @return {boolean} true nếu có nguy cơ timeout
+   */
+  checkTimeoutRisk() {
+    const currentTime = new Date();
+    const executionTime = currentTime - this.executionStartTime;
+    const timeLimit = this.config.EXECUTION_TIME_LIMIT_MS || 300000; // 5 phút default
+
+    // Cảnh báo khi đạt 80% thời gian
+    const warningThreshold = timeLimit * 0.8;
+
+    if (executionTime > warningThreshold) {
+      const remainingTime = timeLimit - executionTime;
+      Logger.log(`⚠️ Timeout warning: ${Math.round(executionTime / 1000)}s elapsed, ${Math.round(remainingTime / 1000)}s remaining`);
+
+      // Trả về true nếu còn ít hơn 30 giây
+      return remainingTime < 30000;
+    }
+
+    return false;
+  }
+
+  /**
+   * Flush all pending operations với timeout protection
    */
   flushAll() {
     Logger.log("🚀 Flushing all pending operations...");
+
+    // Kiểm tra timeout risk trước khi flush
+    if (this.checkTimeoutRisk()) {
+      Logger.log("⚠️ Timeout risk detected, performing emergency flush...");
+      // Chỉ flush priority operations
+      const priorityValues = this.priorityQueue.filter(op => op.type === 'values');
+      const priorityFormats = this.priorityQueue.filter(op => op.type === 'format');
+
+      if (priorityValues.length > 0) {
+        Logger.log(`🚨 Emergency flushing ${priorityValues.length} priority value operations`);
+        this.flushSheetValueUpdates();
+      }
+
+      if (priorityFormats.length > 0 && priorityFormats.length <= 50) {
+        Logger.log(`🚨 Emergency flushing ${priorityFormats.length} priority format operations`);
+        this.flushSheetFormatUpdates();
+      }
+
+      return;
+    }
 
     this.flushSheetValueUpdates();
     this.flushSheetFormatUpdates();

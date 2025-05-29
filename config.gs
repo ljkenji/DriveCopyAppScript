@@ -73,14 +73,20 @@ const CONFIG = {
     }
   },
 
-  MAX_FILES_PER_RUN: 50,
+  MAX_FILES_PER_RUN: 30,               // Giảm từ 50 xuống 30 để tránh timeout
 
   // ==================== CẤU HÌNH PERFORMANCE (MỚI) ====================
 
-  // Batch processing settings
-  BATCH_SIZE_SHEETS: 500,           // Số rows tối đa cho batch sheets operations
+  // Batch processing settings - Tối ưu hóa để tránh timeout
+  BATCH_SIZE_SHEETS: 300,           // Giảm từ 500 xuống 300 cho sheet operations
+  BATCH_SIZE_FORMATS: 200,          // Thêm mới: Giới hạn format operations để tránh timeout
   BATCH_SIZE_DRIVE: 100,            // Số operations tối đa cho batch drive operations
   MEMORY_CLEANUP_THRESHOLD: 5000,   // Threshold để trigger memory cleanup
+
+  // Chunking settings cho large datasets
+  SCAN_CHUNK_SIZE: 500,             // Số items tối đa mỗi chunk khi scan
+  FORMAT_CHUNK_SIZE: 100,           // Số format operations mỗi chunk
+  PROGRESSIVE_FLUSH_THRESHOLD: 150, // Flush khi đạt threshold này
 
   // API Rate limiting settings
   API_DELAY_MIN_MS: 100,            // Delay tối thiểu giữa API calls (ms)
@@ -88,8 +94,13 @@ const CONFIG = {
   API_RETRY_MAX: 3,                 // Số lần retry tối đa cho API calls
 
   // Pagination settings cho large folders
-  FOLDER_SCAN_PAGE_SIZE: 1000,      // Số items tối đa mỗi lần scan folder
-  LARGE_FOLDER_THRESHOLD: 2000,     // Threshold để coi là large folder
+  FOLDER_SCAN_PAGE_SIZE: 800,       // Giảm từ 1000 xuống 800 items mỗi lần scan
+  LARGE_FOLDER_THRESHOLD: 1500,     // Giảm từ 2000 xuống 1500 để xử lý sớm hơn
+
+  // Timeout prevention settings
+  EXECUTION_TIME_LIMIT_MS: 300000,  // 5 phút (300 giây) - dành 1 phút buffer
+  PROGRESS_SAVE_INTERVAL: 100,      // Lưu progress mỗi 100 operations
+  ENABLE_PROGRESSIVE_PROCESSING: true, // Bật xử lý từng phần
 
   // Performance monitoring
   ENABLE_PERFORMANCE_MONITORING: true,  // Bật/tắt performance monitoring
